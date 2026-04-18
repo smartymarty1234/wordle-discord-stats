@@ -1,0 +1,10 @@
+[package]
+name = "imgparse"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+image = "0.25"
+ocrs = "0.8"
+rten = "0.13"
+ureq = "2"
