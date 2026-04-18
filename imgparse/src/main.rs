@@ -15,19 +15,21 @@ macro_rules! timed {
     }};
 }
 
-fn extract_wordle_number(img: &image::DynamicImage, debug: bool) -> Option<u32> {
+fn load_engine(debug: bool) -> Option<OcrEngine> {
     let models_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("models");
     let detection_model = timed!(debug, "load detection model",
         Model::load_file(models_dir.join("text-detection.rten")).ok()?);
     let recognition_model = timed!(debug, "load recognition model",
         Model::load_file(models_dir.join("text-recognition.rten")).ok()?);
-    let engine = timed!(debug, "init engine", OcrEngine::new(OcrEngineParams {
+    timed!(debug, "init engine", OcrEngine::new(OcrEngineParams {
         detection_model: Some(detection_model),
         recognition_model: Some(recognition_model),
         ..Default::default()
     })
-    .ok()?);
+    .ok())
+}
 
+fn extract_wordle_number(engine: &OcrEngine, img: &image::DynamicImage, debug: bool) -> Option<u32> {
     let rgb = timed!(debug, "to_rgb8", img.to_rgb8());
     let img_source = ImageSource::from_bytes(rgb.as_raw(), rgb.dimensions()).ok()?;
     let ocr_input = timed!(debug, "prepare_input", engine.prepare_input(img_source).ok()?);
@@ -62,8 +64,9 @@ fn main() {
     let debug = args.iter().any(|a| a == "--debug");
     let src = args.iter().skip(1).find(|a| *a != "--debug")
         .expect("usage: imgparse [--debug] <url-or-path>");
+    let engine = load_engine(debug).expect("failed to load OCR engine");
     let img = load_image(src, debug);
-    match extract_wordle_number(&img, debug) {
+    match extract_wordle_number(&engine, &img, debug) {
         Some(n) => println!("{}", n),
         None => {
             eprintln!("could not extract wordle number");
