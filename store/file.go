@@ -53,7 +53,7 @@ func (f *FileStore) Save(result WordleResult) (bool, error) {
 	return true, f.persist(append(results, result))
 }
 
-func (f *FileStore) QueryStats(userID string, sinceDay int, scoringType ScoringType) (StatsResult, error) {
+func (f *FileStore) QueryStats(userID string, sinceDay int, scoringType ScoringType, resolveIdentity func(string) string) (StatsResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -62,21 +62,22 @@ func (f *FileStore) QueryStats(userID string, sinceDay int, scoringType ScoringT
 		return StatsResult{}, err
 	}
 
-	avgs := computeAverages(results, scoringType)
-	userAvg, ok := avgs[userID]
+	avgs := computeAverages(results, scoringType, resolveIdentity)
+	identity := resolveIdentity(userID)
+	userAvg, ok := avgs[identity]
 	if !ok {
-		return StatsResult{}, fmt.Errorf("no results for %s", userID)
+		return StatsResult{}, fmt.Errorf("no results for %s", identity)
 	}
 
 	ranked := make([]TopEntry, 0, len(avgs))
-	for uid, avg := range avgs {
-		ranked = append(ranked, TopEntry{UserID: uid, AvgScore: avg})
+	for id, avg := range avgs {
+		ranked = append(ranked, TopEntry{UserID: id, AvgScore: avg})
 	}
 	sortEntries(ranked)
 
 	rank := 1
 	for _, e := range ranked {
-		if e.UserID == userID {
+		if e.UserID == identity {
 			break
 		}
 		rank++
@@ -85,7 +86,7 @@ func (f *FileStore) QueryStats(userID string, sinceDay int, scoringType ScoringT
 	return StatsResult{AvgScore: userAvg, Rank: rank}, nil
 }
 
-func (f *FileStore) QueryTop(k int, sinceDay int, scoringType ScoringType) ([]TopEntry, error) {
+func (f *FileStore) QueryTop(k int, sinceDay int, scoringType ScoringType, resolveIdentity func(string) string) ([]TopEntry, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -94,10 +95,10 @@ func (f *FileStore) QueryTop(k int, sinceDay int, scoringType ScoringType) ([]To
 		return nil, err
 	}
 
-	avgs := computeAverages(results, scoringType)
+	avgs := computeAverages(results, scoringType, resolveIdentity)
 	entries := make([]TopEntry, 0, len(avgs))
-	for uid, avg := range avgs {
-		entries = append(entries, TopEntry{UserID: uid, AvgScore: avg})
+	for id, avg := range avgs {
+		entries = append(entries, TopEntry{UserID: id, AvgScore: avg})
 	}
 	sortEntries(entries)
 

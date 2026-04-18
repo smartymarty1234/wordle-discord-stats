@@ -2,6 +2,7 @@ package nickcache
 
 import (
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,9 @@ func (c *NickCache) Get(userID string) string {
 	if n, ok := c.nicks[userID]; ok {
 		return n
 	}
+	if strings.HasPrefix(userID, "@") {
+		return userID[1:]
+	}
 	return userID
 }
 
@@ -41,6 +45,12 @@ func (c *NickCache) Refresh(getUserIDs func() ([]string, error)) {
 
 	fresh := make(map[string]string, len(ids))
 	for _, id := range ids {
+		// Fixed-nick users have IDs like "@sanky panky" — not Discord snowflakes.
+		// Their display name is already embedded in the ID; skip the API call.
+		if strings.HasPrefix(id, "@") {
+			fresh[id] = id[1:]
+			continue
+		}
 		m, err := c.session.GuildMember(c.guildID, id)
 		if err != nil {
 			slog.Warn("nickcache: lookup failed", "id", id, "err", err)
@@ -58,6 +68,21 @@ func (c *NickCache) Refresh(getUserIDs func() ([]string, error)) {
 	c.nicks = fresh
 	c.mu.Unlock()
 	slog.Debug("nickcache: refreshed", "count", len(fresh))
+}
+
+// ResolveIdentity returns a canonical display-name key for a userID so that
+// results from "@rust cruncher" and the snowflake that the nick cache resolves
+// to "rust cruncher" are merged into a single player when scoring.
+func (c *NickCache) ResolveIdentity(userID string) string {
+	if strings.HasPrefix(userID, "@") {
+		return userID[1:]
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if n, ok := c.nicks[userID]; ok {
+		return n
+	}
+	return userID
 }
 
 func (c *NickCache) Start(getUserIDs func() ([]string, error), interval time.Duration) {

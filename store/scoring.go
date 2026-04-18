@@ -10,12 +10,13 @@ type scoredEntry struct {
 // Higher values pull sparse users closer to the mean.
 const bayesianC = 10
 
-func computeAverages(results []WordleResult, scoringType ScoringType) map[string]float64 {
+func computeAverages(results []WordleResult, scoringType ScoringType, resolveIdentity func(string) string) map[string]float64 {
 	entries := completedEntries(results)
 
 	userScores := map[string][]int{}
 	for _, e := range entries {
-		userScores[e.userID] = append(userScores[e.userID], e.score)
+		id := resolveIdentity(e.userID)
+		userScores[id] = append(userScores[id], e.score)
 	}
 
 	if scoringType != ScoringBayesianWeighted {
