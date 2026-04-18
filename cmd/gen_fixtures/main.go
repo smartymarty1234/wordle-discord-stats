@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("discordgo.New: %v", err)
 	}
 
-	afterID := ""
+	afterID := "1413451698722308208"
 	saved, skipped := 0, 0
 
 	for {
@@ -77,32 +77,36 @@ func main() {
 				continue
 			}
 
+			t0 := time.Now()
 			day, err := runImgparse(imgparseBin, imageURL)
+			imgparseElapsed := time.Since(t0)
 			if err != nil {
-				log.Printf("skip msg=%s: imgparse: %v", msg.ID, err)
+				log.Printf("skip msg=%s: imgparse (%s): %v", msg.ID, imgparseElapsed, err)
 				skipped++
 				continue
 			}
 			if day == "" {
-				log.Printf("skip msg=%s: imgparse returned empty day", msg.ID)
+				log.Printf("skip msg=%s: imgparse (%s) returned empty day", msg.ID, imgparseElapsed)
 				skipped++
 				continue
 			}
 
 			dest := filepath.Join(outDir, day+".png")
 			if _, err := os.Stat(dest); err == nil {
-				log.Printf("skip msg=%s: %s already exists", msg.ID, dest)
+				log.Printf("skip msg=%s: %s already exists (imgparse=%s)", msg.ID, dest, imgparseElapsed)
 				skipped++
 				continue
 			}
 
+			t1 := time.Now()
 			if err := downloadImage(imageURL, dest); err != nil {
-				log.Printf("skip msg=%s: download: %v", msg.ID, err)
+				log.Printf("skip msg=%s: download (%s): %v", msg.ID, time.Since(t1), err)
 				skipped++
 				continue
 			}
+			downloadElapsed := time.Since(t1)
 
-			log.Printf("saved day=%s from msg=%s -> %s", day, msg.ID, dest)
+			log.Printf("saved day=%s msg=%s imgparse=%s download=%s", day, msg.ID, imgparseElapsed, downloadElapsed)
 			saved++
 		}
 
