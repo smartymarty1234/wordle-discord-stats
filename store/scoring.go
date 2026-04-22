@@ -51,9 +51,14 @@ func computeAverages(results []WordleResult, scoringType ScoringType) map[string
 func completedEntries(results []WordleResult) []scoredEntry {
 	entries := make([]scoredEntry, 0, len(results))
 	for _, r := range results {
-		if r.Complete {
-			entries = append(entries, scoredEntry{r.UserID, r.Day, r.Score})
+		if !r.Complete {
+			continue
 		}
+		id := r.UserID
+		if r.FixedNick != "" {
+			id = r.FixedNick
+		}
+		entries = append(entries, scoredEntry{id, r.Day, r.Score})
 	}
 	return entries
 }

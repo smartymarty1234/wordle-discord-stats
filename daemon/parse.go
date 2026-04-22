@@ -95,7 +95,7 @@ func parseAggregateScores(content string) []userScore {
 				results = append(results, userScore{userID: m[1], score: score, complete: complete})
 			} else {
 				name := strings.TrimSpace(m[2])
-				results = append(results, userScore{userID: "@" + name, fixedNick: name, score: score, complete: complete})
+				results = append(results, userScore{fixedNick: name, score: score, complete: complete})
 			}
 		}
 	}

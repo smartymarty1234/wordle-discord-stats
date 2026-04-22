@@ -67,7 +67,14 @@ func (f *FileStore) Save(result WordleResult) (bool, error) {
 		return false, err
 	}
 	for _, r := range results {
-		if r.Day == result.Day && r.UserID == result.UserID {
+		if r.Day != result.Day {
+			continue
+		}
+		if result.FixedNick != "" {
+			if r.FixedNick == result.FixedNick {
+				return false, nil
+			}
+		} else if r.UserID == result.UserID {
 			return false, nil
 		}
 	}
@@ -139,6 +146,9 @@ func (f *FileStore) UserIDs() ([]string, error) {
 	seen := map[string]bool{}
 	var ids []string
 	for _, r := range all {
+		if r.FixedNick != "" {
+			continue
+		}
 		if !seen[r.UserID] {
 			seen[r.UserID] = true
 			ids = append(ids, r.UserID)

@@ -60,6 +60,7 @@ func (c *NickCache) Refresh(getUserIDs func() ([]string, error)) {
 	slog.Debug("nickcache: refreshed", "count", len(fresh))
 }
 
+// providing getUserIDs through store, not discord api, to scope mappings to only those that exist
 func (c *NickCache) Start(getUserIDs func() ([]string, error), interval time.Duration) {
 	c.Refresh(getUserIDs)
 	go func() {

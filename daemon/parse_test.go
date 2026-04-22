@@ -28,7 +28,7 @@ X/6: <@111111111111111111>`,
 			content: `Here are yesterday's results:
 X/6: @chimchi cruncher`,
 			want: []userScore{
-				{userID: "@chimchi cruncher", fixedNick: "chimchi cruncher", score: 0, complete: false},
+				{fixedNick: "chimchi cruncher", score: 0, complete: false},
 			},
 		},
 		{
@@ -39,7 +39,7 @@ X/6: @chimchi cruncher`,
 5/6: <@328236081315053569>`,
 			want: []userScore{
 				{userID: "222001869906640896", score: 3, complete: true},
-				{userID: "@rust cruncher 2", fixedNick: "rust cruncher 2", score: 4, complete: true},
+				{fixedNick: "rust cruncher 2", score: 4, complete: true},
 				{userID: "454692930943320065", score: 4, complete: true},
 				{userID: "541689076126842921", score: 4, complete: true},
 				{userID: "328236081315053569", score: 5, complete: true},

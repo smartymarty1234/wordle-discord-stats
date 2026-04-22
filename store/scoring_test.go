@@ -12,6 +12,12 @@ var scenarioResults = []WordleResult{
 	{UserID: "bob", Day: 3, Score: 5, Complete: true},
 }
 
+// Fixed-nick users have no UserID; their FixedNick is the identity key.
+var fixedNickResults = []WordleResult{
+	{FixedNick: "carol", Day: 1, Score: 3, Complete: true},
+	{FixedNick: "carol", Day: 2, Score: 5, Complete: true},
+}
+
 func approx(a, b float64) bool { return math.Abs(a-b) < 1e-6 }
 
 func TestScenario_Average(t *testing.T) {
@@ -21,6 +27,16 @@ func TestScenario_Average(t *testing.T) {
 	}
 	if !approx(avgs["bob"], 4.5) {
 		t.Errorf("bob: got %.4f, want 4.5", avgs["bob"])
+	}
+}
+
+func TestFixedNick_Average(t *testing.T) {
+	avgs := computeAverages(fixedNickResults, ScoringAverage)
+	if !approx(avgs["carol"], 4.0) {
+		t.Errorf("carol: got %.4f, want 4.0", avgs["carol"])
+	}
+	if _, ok := avgs[""]; ok {
+		t.Error("empty-string key present; fixed-nick not keyed by FixedNick")
 	}
 }
 
