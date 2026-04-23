@@ -1,5 +1,10 @@
 package store
 
+import (
+	"math"
+	"sort"
+)
+
 type resolvedResult struct {
 	result WordleResult
 	name   string // display name after resolution via Resolver
@@ -20,4 +25,45 @@ func avgPerPlayer(players map[string][]resolvedResult, minGames int) map[string]
 		out[name] = float64(sum) / float64(len(rs))
 	}
 	return out
+}
+
+// totalElo runs long-term Elo across all days in chronological order. Each
+// day is played out as a round-robin of 1v1 matches between every pair of
+// players that played that day; the lower score wins (ties split). Ratings
+// carry over between days; unseen players enter at start.
+func totalElo(days map[int][]resolvedResult, start, k float64) map[string]float64 {
+	dayNums := make([]int, 0, len(days))
+	for d := range days {
+		dayNums = append(dayNums, d)
+	}
+	sort.Ints(dayNums)
+
+	ratings := map[string]float64{}
+	for _, d := range dayNums {
+		entries := days[d]
+		for _, r := range entries {
+			if _, ok := ratings[r.name]; !ok {
+				ratings[r.name] = start
+			}
+		}
+		for i := 0; i < len(entries); i++ {
+			for j := i + 1; j < len(entries); j++ {
+				a, b := entries[i], entries[j]
+				var sA float64
+				switch {
+				case a.result.Score < b.result.Score:
+					sA = 1
+				case a.result.Score > b.result.Score:
+					sA = 0
+				default:
+					sA = 0.5
+				}
+				rA, rB := ratings[a.name], ratings[b.name]
+				eA := 1 / (1 + math.Pow(10, (rB-rA)/400))
+				ratings[a.name] = rA + k*(sA-eA)
+				ratings[b.name] = rB + k*((1-sA)-(1-eA))
+			}
+		}
+	}
+	return ratings
 }

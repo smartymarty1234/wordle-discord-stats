@@ -167,8 +167,61 @@ func (f *FileStore) computeValues(q Query) (map[string]float64, error) {
 			return nil, err
 		}
 		return avgPerPlayer(players, q.MinGames), nil
+	case KindAvgSliding:
+		players, err := f.perPlayerSince(latestDaySince(q.SlidingDays, f))
+		if err != nil {
+			return nil, err
+		}
+		return avgPerPlayer(players, 0), nil
+	case KindTotalElo:
+		days, err := f.perDay()
+		if err != nil {
+			return nil, err
+		}
+		return totalElo(days, q.EloStart, q.EloK), nil
 	}
 	return nil, fmt.Errorf("unknown query kind: %d", q.Kind)
+}
+
+// perPlayerSince is perPlayer restricted to results on or after sinceDay.
+// sinceDay == 0 means no filter.
+func (f *FileStore) perPlayerSince(sinceDay int) (map[string][]resolvedResult, error) {
+	all, err := f.perPlayer()
+	if err != nil {
+		return nil, err
+	}
+	if sinceDay == 0 {
+		return all, nil
+	}
+	out := map[string][]resolvedResult{}
+	for name, rs := range all {
+		for _, r := range rs {
+			if r.result.Day >= sinceDay {
+				out[name] = append(out[name], r)
+			}
+		}
+	}
+	return out, nil
+}
+
+// latestDaySince computes the "since day" cutoff for a window of the given
+// size, relative to the max day seen in the store. Returns 0 (no cutoff)
+// when days <= 0 or the store is empty.
+func latestDaySince(days int, f *FileStore) int {
+	if days <= 0 {
+		return 0
+	}
+	results, err := f.load()
+	if err != nil || len(results) == 0 {
+		return 0
+	}
+	maxDay := results[0].Day
+	for _, r := range results[1:] {
+		if r.Day > maxDay {
+			maxDay = r.Day
+		}
+	}
+	return maxDay - days + 1
 }
 
 // perPlayer groups resolved results by display name. Iteration order within
@@ -221,9 +274,11 @@ func sortEntries(entries []Entry, kind QueryKind) {
 	})
 }
 
+// averageKind reports whether the feature's "better" direction is lower.
+// Averages favor lower scores; Elo and count-style features favor higher.
 func averageKind(k QueryKind) bool {
 	switch k {
-	case KindAvgAllTime:
+	case KindAvgAllTime, KindAvgSliding:
 		return true
 	}
 	return false

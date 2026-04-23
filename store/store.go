@@ -37,6 +37,13 @@ const (
 	// KindAvgAllTime: average score per player across all time.
 	// Params: MinGames (exclude players with fewer games; 0 = no filter).
 	KindAvgAllTime QueryKind = iota
+	// KindAvgSliding: average score over the most recent SlidingDays of data.
+	// Params: SlidingDays.
+	KindAvgSliding
+	// KindTotalElo: long-term Elo treating each day as a set of 1v1 matches
+	// between every pair of players that played that day (lower score wins).
+	// Params: EloStart (starting rating), EloK (K-factor).
+	KindTotalElo
 )
 
 // Selector picks which subset of the player→value mapping to return.
@@ -58,7 +65,10 @@ type Query struct {
 	// Feature-specific parameters. Zero values are allowed and mean "no
 	// filter" / sensible default where applicable.
 
-	MinGames int // KindAvgAllTime
+	MinGames    int     // KindAvgAllTime
+	SlidingDays int     // KindAvgSliding
+	EloStart    float64 // KindTotalElo
+	EloK        float64 // KindTotalElo
 }
 
 // Entry is one row of a query result.
