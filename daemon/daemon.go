@@ -67,9 +67,9 @@ func (d *Daemon) postReport() {
 	header := buildHeader(time.Now(), currentStreaksLine(d.store), funFactLine(d.store, r))
 
 	msg := header +
-		d.topBlock("All-time Elo", store.Query{Kind: store.KindTotalElo, Selector: store.SelectorTopK, K: topK, EloStart: eloStart, EloK: eloK}) +
-		d.topBlock(fmt.Sprintf("All-time average (min %d games)", minGames), store.Query{Kind: store.KindAvgAllTime, Selector: store.SelectorTopK, K: topK, MinGames: minGames}) +
-		d.topBlock(fmt.Sprintf("%d-day sliding average", slidingDays), store.Query{Kind: store.KindAvgSliding, Selector: store.SelectorTopK, K: topK, SlidingDays: slidingDays})
+		d.topBlock(":crown: All-time Elo", store.Query{Kind: store.KindTotalElo, Selector: store.SelectorTopK, K: topK, EloStart: eloStart, EloK: eloK}) +
+		d.topBlock(fmt.Sprintf(":hourglass: All-time average (min %d games)", minGames), store.Query{Kind: store.KindAvgAllTime, Selector: store.SelectorTopK, K: topK, MinGames: minGames}) +
+		d.topBlock(fmt.Sprintf(":clock1: %d-day sliding average", slidingDays), store.Query{Kind: store.KindAvgSliding, Selector: store.SelectorTopK, K: topK, SlidingDays: slidingDays})
 
 	if _, err := d.session.ChannelMessageSend(d.channelID, msg); err != nil {
 		slog.Error("postReport: send", "err", err)

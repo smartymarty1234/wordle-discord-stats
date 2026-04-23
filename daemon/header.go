@@ -44,7 +44,7 @@ func currentStreaksLine(st store.Store) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return "**Current streaks:** " + strings.Join(parts, ", ")
+	return ":fire: **Current streaks:** " + strings.Join(parts, ", ")
 }
 
 // funFactLine picks one fun fact: 50/50 between the best all-time streak
@@ -69,7 +69,7 @@ func allTimeStreakFact(st store.Store) string {
 		return ""
 	}
 	e := res.Entries[0]
-	return fmt.Sprintf("_Fun fact: %s's best streak was %d long, ended on wordle %d._", e.Name, int(e.Value), e.Day)
+	return fmt.Sprintf(":star: _Fun fact: %s's best streak was %d long, ended on wordle %d._", e.Name, int(e.Value), e.Day)
 }
 
 // scoresAtMostFact picks a random x in [2,4] and a random player whose count
@@ -91,5 +91,5 @@ func scoresAtMostFact(st store.Store, r *rand.Rand) string {
 		return ""
 	}
 	e := eligible[r.Intn(len(eligible))]
-	return fmt.Sprintf("_Fun fact: %s has scored ≤ %d on %d days._", e.Name, x, int(e.Value))
+	return fmt.Sprintf(":star: _Fun fact: %s has scored ≤ %d on %d days._", e.Name, x, int(e.Value))
 }

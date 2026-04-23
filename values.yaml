@@ -1,0 +1,12 @@
+# Required
+discordToken: ""
+discordGuildId: ""
+discordChannelId: ""
+wordleBotUserId: ""
+
+# Optional
+debug: "0"
+resultsFile: /data/wordle_results.json
+cursorFile: /data/cursor.txt
+imgparseBin: /app/imgparse
+imgparseModelsDir: /app/models
