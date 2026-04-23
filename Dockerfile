@@ -5,7 +5,7 @@ COPY imgparse/src ./src
 COPY imgparse/models ./models
 RUN cargo build --release
 
-FROM golang:1.24-bookworm AS go-builder
+FROM golang:1.26-bookworm AS go-builder
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
