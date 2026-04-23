@@ -54,12 +54,16 @@ func (d *Daemon) Run() {
 }
 
 func (d *Daemon) postReport() {
-	entries, err := d.store.QueryTop(5, 0)
+	result, err := d.store.Query(store.Query{
+		Kind:     store.KindAvgAllTime,
+		Selector: store.SelectorTopK,
+		K:        5,
+	})
 	if err != nil {
 		slog.Error("postReport: query", "err", err)
 		return
 	}
-	msg := buildHeader(time.Now()) + "**Top 5 (all time)**\n" + store.FormatTop(entries)
+	msg := buildHeader(time.Now()) + "**Top 5 (all time)**\n" + store.FormatEntries(result.Entries)
 	if _, err := d.session.ChannelMessageSend(d.channelID, msg); err != nil {
 		slog.Error("postReport: send", "err", err)
 	}

@@ -115,64 +115,60 @@ func (f *FileStore) Save(result WordleResult) (bool, error) {
 	return true, f.persist(append(results, result))
 }
 
-func (f *FileStore) QueryStats(playerKey string, sinceDay int) (StatsResult, error) {
+// Query computes a scoring feature and selects from the resulting
+// player → value mapping per q.Selector.
+func (f *FileStore) Query(q Query) (QueryResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	results, err := f.since(sinceDay)
+	values, err := f.computeValues(q)
 	if err != nil {
-		return StatsResult{}, err
+		return QueryResult{}, err
 	}
 
-	avgs := computeAverages(f.resolveAll(results))
-
-	// playerKey may be a snowflake; resolve it to match the display-name-keyed avgs map.
-	name := playerKey
-	if f.resolver != nil {
-		name = f.resolver.Get(playerKey)
+	entries := make([]Entry, 0, len(values))
+	for name, v := range values {
+		entries = append(entries, Entry{Name: name, Value: v})
 	}
-	userAvg, ok := avgs[name]
-	if !ok {
-		return StatsResult{}, fmt.Errorf("no results for %s", name)
-	}
+	sortEntries(entries, q.Kind)
 
-	ranked := make([]TopEntry, 0, len(avgs))
-	for n, avg := range avgs {
-		ranked = append(ranked, TopEntry{Name: n, AvgScore: avg})
-	}
-	sortEntries(ranked)
-
-	rank := 1
-	for _, e := range ranked {
-		if e.Name == name {
-			break
+	switch q.Selector {
+	case SelectorTopK:
+		if q.K < len(entries) {
+			entries = entries[:q.K]
 		}
-		rank++
+	case SelectorBottomK:
+		entries = reverse(entries)
+		if q.K < len(entries) {
+			entries = entries[:q.K]
+		}
+	case SelectorPlayer:
+		name := q.Player
+		if f.resolver != nil {
+			name = f.resolver.Get(q.Player)
+		}
+		for i, e := range entries {
+			if e.Name == name {
+				e.Rank = i + 1
+				return QueryResult{Entries: []Entry{e}}, nil
+			}
+		}
+		return QueryResult{}, fmt.Errorf("no results for %s", name)
 	}
-
-	return StatsResult{AvgScore: userAvg, Rank: rank}, nil
+	return QueryResult{Entries: entries}, nil
 }
 
-func (f *FileStore) QueryTop(k int, sinceDay int) ([]TopEntry, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	results, err := f.since(sinceDay)
-	if err != nil {
-		return nil, err
+// computeValues dispatches to the feature-specific calculator for q.Kind.
+func (f *FileStore) computeValues(q Query) (map[string]float64, error) {
+	switch q.Kind {
+	case KindAvgAllTime:
+		players, err := f.perPlayer()
+		if err != nil {
+			return nil, err
+		}
+		return avgPerPlayer(players, q.MinGames), nil
 	}
-
-	avgs := computeAverages(f.resolveAll(results))
-	entries := make([]TopEntry, 0, len(avgs))
-	for name, avg := range avgs {
-		entries = append(entries, TopEntry{Name: name, AvgScore: avg})
-	}
-	sortEntries(entries)
-
-	if k < len(entries) {
-		entries = entries[:k]
-	}
-	return entries, nil
+	return nil, fmt.Errorf("unknown query kind: %d", q.Kind)
 }
 
 // perPlayer groups resolved results by display name. Iteration order within
@@ -204,28 +200,31 @@ func (f *FileStore) perDay() (map[int][]resolvedResult, error) {
 	return out, nil
 }
 
-func (f *FileStore) since(sinceDay int) ([]WordleResult, error) {
-	all, err := f.load()
-	if err != nil {
-		return nil, err
+func reverse(e []Entry) []Entry {
+	for i, j := 0, len(e)-1; i < j; i, j = i+1, j-1 {
+		e[i], e[j] = e[j], e[i]
 	}
-	if sinceDay == 0 {
-		return all, nil
-	}
-	var out []WordleResult
-	for _, r := range all {
-		if r.Day >= sinceDay {
-			out = append(out, r)
-		}
-	}
-	return out, nil
+	return e
 }
 
-func sortEntries(entries []TopEntry) {
+// sortEntries orders entries "best first" for the given kind. For averages
+// lower is better; for other kinds (streaks, counts) higher is better.
+func sortEntries(entries []Entry, kind QueryKind) {
 	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].AvgScore != entries[j].AvgScore {
-			return entries[i].AvgScore < entries[j].AvgScore
+		if entries[i].Value != entries[j].Value {
+			if averageKind(kind) {
+				return entries[i].Value < entries[j].Value
+			}
+			return entries[i].Value > entries[j].Value
 		}
 		return entries[i].Name < entries[j].Name
 	})
+}
+
+func averageKind(k QueryKind) bool {
+	switch k {
+	case KindAvgAllTime:
+		return true
+	}
+	return false
 }

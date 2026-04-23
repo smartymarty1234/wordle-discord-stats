@@ -32,12 +32,6 @@ var slashCommands = []*discordgo.ApplicationCommand{
 				Description: "User to look up",
 				Required:    true,
 			},
-			{
-				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "since_day",
-				Description: "Include results on or after this Wordle day (0 = all time)",
-				Required:    false,
-			},
 		},
 	},
 	{
@@ -49,12 +43,6 @@ var slashCommands = []*discordgo.ApplicationCommand{
 				Name:        "k",
 				Description: "Number of users to show",
 				Required:    true,
-			},
-			{
-				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "since_day",
-				Description: "Include results on or after this Wordle day (0 = all time)",
-				Required:    false,
 			},
 		},
 	},
