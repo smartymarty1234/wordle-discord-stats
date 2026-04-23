@@ -175,6 +175,35 @@ func (f *FileStore) QueryTop(k int, sinceDay int) ([]TopEntry, error) {
 	return entries, nil
 }
 
+// perPlayer groups resolved results by display name. Iteration order within
+// each slice follows load()'s (day, key) ordering.
+func (f *FileStore) perPlayer() (map[string][]resolvedResult, error) {
+	results, err := f.load()
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]resolvedResult{}
+	for _, rr := range f.resolveAll(results) {
+		out[rr.name] = append(out[rr.name], rr)
+	}
+	return out, nil
+}
+
+// perDay groups resolved results by wordle day. Iteration order within each
+// slice follows load()'s (day, key) ordering (so per-day slices are ordered
+// by player key).
+func (f *FileStore) perDay() (map[int][]resolvedResult, error) {
+	results, err := f.load()
+	if err != nil {
+		return nil, err
+	}
+	out := map[int][]resolvedResult{}
+	for _, rr := range f.resolveAll(results) {
+		out[rr.result.Day] = append(out[rr.result.Day], rr)
+	}
+	return out, nil
+}
+
 func (f *FileStore) since(sinceDay int) ([]WordleResult, error) {
 	all, err := f.load()
 	if err != nil {
