@@ -121,14 +121,9 @@ func (f *FileStore) Query(q Query) (QueryResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	values, err := f.computeValues(q)
+	entries, err := f.computeEntries(q)
 	if err != nil {
 		return QueryResult{}, err
-	}
-
-	entries := make([]Entry, 0, len(values))
-	for name, v := range values {
-		entries = append(entries, Entry{Name: name, Value: v})
 	}
 	sortEntries(entries, q.Kind)
 
@@ -158,29 +153,70 @@ func (f *FileStore) Query(q Query) (QueryResult, error) {
 	return QueryResult{Entries: entries}, nil
 }
 
-// computeValues dispatches to the feature-specific calculator for q.Kind.
-func (f *FileStore) computeValues(q Query) (map[string]float64, error) {
+// computeEntries dispatches to the feature-specific calculator for q.Kind.
+func (f *FileStore) computeEntries(q Query) ([]Entry, error) {
 	switch q.Kind {
 	case KindAvgAllTime:
 		players, err := f.perPlayer()
 		if err != nil {
 			return nil, err
 		}
-		return avgPerPlayer(players, q.MinGames), nil
+		return valuesToEntries(avgPerPlayer(players, q.MinGames)), nil
 	case KindAvgSliding:
 		players, err := f.perPlayerSince(latestDaySince(q.SlidingDays, f))
 		if err != nil {
 			return nil, err
 		}
-		return avgPerPlayer(players, 0), nil
+		return valuesToEntries(avgPerPlayer(players, 0)), nil
 	case KindTotalElo:
 		days, err := f.perDay()
 		if err != nil {
 			return nil, err
 		}
-		return totalElo(days, q.EloStart, q.EloK), nil
+		return valuesToEntries(totalElo(days, q.EloStart, q.EloK)), nil
+	case KindCurrentStreak:
+		players, err := f.perPlayer()
+		if err != nil {
+			return nil, err
+		}
+		return valuesToEntries(currentStreaks(players, latestDay(f))), nil
+	case KindAllTimeStreak:
+		players, err := f.perPlayer()
+		if err != nil {
+			return nil, err
+		}
+		return allTimeStreaks(players), nil
+	case KindScoresAtMost:
+		players, err := f.perPlayer()
+		if err != nil {
+			return nil, err
+		}
+		return valuesToEntries(scoresAtMost(players, q.ScoreAtMost)), nil
 	}
 	return nil, fmt.Errorf("unknown query kind: %d", q.Kind)
+}
+
+func valuesToEntries(values map[string]float64) []Entry {
+	entries := make([]Entry, 0, len(values))
+	for name, v := range values {
+		entries = append(entries, Entry{Name: name, Value: v})
+	}
+	return entries
+}
+
+// latestDay returns the max wordle day present in the store, or 0 if empty.
+func latestDay(f *FileStore) int {
+	results, err := f.load()
+	if err != nil || len(results) == 0 {
+		return 0
+	}
+	max := results[0].Day
+	for _, r := range results[1:] {
+		if r.Day > max {
+			max = r.Day
+		}
+	}
+	return max
 }
 
 // perPlayerSince is perPlayer restricted to results on or after sinceDay.
@@ -211,17 +247,11 @@ func latestDaySince(days int, f *FileStore) int {
 	if days <= 0 {
 		return 0
 	}
-	results, err := f.load()
-	if err != nil || len(results) == 0 {
+	max := latestDay(f)
+	if max == 0 {
 		return 0
 	}
-	maxDay := results[0].Day
-	for _, r := range results[1:] {
-		if r.Day > maxDay {
-			maxDay = r.Day
-		}
-	}
-	return maxDay - days + 1
+	return max - days + 1
 }
 
 // perPlayer groups resolved results by display name. Iteration order within

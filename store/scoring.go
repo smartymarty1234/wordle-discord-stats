@@ -27,6 +27,68 @@ func avgPerPlayer(players map[string][]resolvedResult, minGames int) map[string]
 	return out
 }
 
+// currentStreaks returns the consecutive-days-played count per player,
+// ending exactly at latest. A player whose most recent result isn't
+// latest has a current streak of 0. Input slices must be day-ascending.
+func currentStreaks(players map[string][]resolvedResult, latest int) map[string]float64 {
+	out := make(map[string]float64, len(players))
+	for name, rs := range players {
+		if latest == 0 || len(rs) == 0 || rs[len(rs)-1].result.Day != latest {
+			out[name] = 0
+			continue
+		}
+		streak := 1
+		for i := len(rs) - 2; i >= 0; i-- {
+			if rs[i].result.Day == rs[i+1].result.Day-1 {
+				streak++
+				continue
+			}
+			break
+		}
+		out[name] = float64(streak)
+	}
+	return out
+}
+
+// allTimeStreaks returns, for each player, the longest run of consecutive
+// days played and the final day of that run. Input slices must be day-ascending.
+func allTimeStreaks(players map[string][]resolvedResult) []Entry {
+	entries := make([]Entry, 0, len(players))
+	for name, rs := range players {
+		if len(rs) == 0 {
+			continue
+		}
+		best, bestEnd := 1, rs[0].result.Day
+		cur := 1
+		for i := 1; i < len(rs); i++ {
+			if rs[i].result.Day == rs[i-1].result.Day+1 {
+				cur++
+			} else {
+				cur = 1
+			}
+			if cur > best {
+				best, bestEnd = cur, rs[i].result.Day
+			}
+		}
+		entries = append(entries, Entry{Name: name, Value: float64(best), Day: bestEnd})
+	}
+	return entries
+}
+
+func scoresAtMost(players map[string][]resolvedResult, threshold int) map[string]float64 {
+	out := make(map[string]float64, len(players))
+	for name, rs := range players {
+		count := 0
+		for _, r := range rs {
+			if r.result.Score <= threshold {
+				count++
+			}
+		}
+		out[name] = float64(count)
+	}
+	return out
+}
+
 // totalElo runs long-term Elo across all days in chronological order. Each
 // day is played out as a round-robin of 1v1 matches between every pair of
 // players that played that day; the lower score wins (ties split). Ratings

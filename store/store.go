@@ -44,6 +44,15 @@ const (
 	// between every pair of players that played that day (lower score wins).
 	// Params: EloStart (starting rating), EloK (K-factor).
 	KindTotalElo
+	// KindCurrentStreak: consecutive days played up to the latest day in
+	// the store. Zero for players who didn't play on the latest day.
+	KindCurrentStreak
+	// KindAllTimeStreak: longest run of consecutive days played per player.
+	// Entry.Day is the final day of that run (the "when").
+	KindAllTimeStreak
+	// KindScoresAtMost: count of results with score <= ScoreAtMost per player.
+	// Params: ScoreAtMost.
+	KindScoresAtMost
 )
 
 // Selector picks which subset of the player→value mapping to return.
@@ -69,6 +78,7 @@ type Query struct {
 	SlidingDays int     // KindAvgSliding
 	EloStart    float64 // KindTotalElo
 	EloK        float64 // KindTotalElo
+	ScoreAtMost int     // KindScoresAtMost
 }
 
 // Entry is one row of a query result.
@@ -76,6 +86,7 @@ type Entry struct {
 	Name  string  // resolved display name
 	Value float64 // the computed value for this feature
 	Rank  int     // 1-based rank among all matching players (filled for SelectorPlayer)
+	Day   int     // wordle day associated with this entry (e.g. when a streak ended); 0 if unused
 }
 
 type QueryResult struct {
