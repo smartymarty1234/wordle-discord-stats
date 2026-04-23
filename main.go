@@ -37,6 +37,7 @@ func main() {
 
 	nc := nickcache.New(b.Session(), guildID)
 	nc.Start(time.Hour)
+	st.SetResolver(nc)
 	b.SetResolver(nc)
 
 	if channelID != "" && botUserID != "" {

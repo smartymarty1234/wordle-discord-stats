@@ -59,7 +59,7 @@ func (d *Daemon) postReport() {
 		slog.Error("postReport: query", "err", err)
 		return
 	}
-	msg := buildHeader(time.Now()) + "**Top 5 (all time)**\n" + store.FormatTop(entries, d.resolver.Get)
+	msg := buildHeader(time.Now()) + "**Top 5 (all time)**\n" + store.FormatTop(entries)
 	if _, err := d.session.ChannelMessageSend(d.channelID, msg); err != nil {
 		slog.Error("postReport: send", "err", err)
 	}

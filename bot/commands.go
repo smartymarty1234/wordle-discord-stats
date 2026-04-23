@@ -45,7 +45,7 @@ func (b *Bot) handleTop(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if err != nil {
 		msg = fmt.Sprintf("error: %v", err)
 	} else {
-		msg = store.FormatTop(results, b.resolver.Get)
+		msg = store.FormatTop(results)
 	}
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

@@ -11,12 +11,35 @@ import (
 )
 
 type FileStore struct {
-	path string
-	mu   sync.Mutex
+	path     string
+	mu       sync.Mutex
+	resolver Resolver
 }
 
 func NewFileStore(path string) *FileStore {
 	return &FileStore{path: path}
+}
+
+func (f *FileStore) SetResolver(r Resolver) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.resolver = r
+}
+
+func (f *FileStore) resolveName(r WordleResult) string {
+	key := PlayerKey(r)
+	if f.resolver != nil {
+		return f.resolver.Get(key)
+	}
+	return key
+}
+
+func (f *FileStore) resolveAll(results []WordleResult) []resolvedResult {
+	out := make([]resolvedResult, len(results))
+	for i, r := range results {
+		out[i] = resolvedResult{result: r, name: f.resolveName(r)}
+	}
+	return out
 }
 
 func (f *FileStore) load() ([]WordleResult, error) {
@@ -66,9 +89,9 @@ func (f *FileStore) Save(result WordleResult) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	key := PlayerKey(result)
-	for _, r := range results {
-		if r.Day == result.Day && PlayerKey(r) == key {
+	incomingName := f.resolveName(result)
+	for _, r := range f.resolveAll(results) {
+		if r.result.Day == result.Day && r.name == incomingName {
 			return false, nil
 		}
 	}
@@ -84,21 +107,27 @@ func (f *FileStore) QueryStats(playerKey string, sinceDay int) (StatsResult, err
 		return StatsResult{}, err
 	}
 
-	avgs := computeAverages(results)
-	userAvg, ok := avgs[playerKey]
+	avgs := computeAverages(f.resolveAll(results))
+
+	// playerKey may be a snowflake; resolve it to match the display-name-keyed avgs map.
+	name := playerKey
+	if f.resolver != nil {
+		name = f.resolver.Get(playerKey)
+	}
+	userAvg, ok := avgs[name]
 	if !ok {
-		return StatsResult{}, fmt.Errorf("no results for %s", playerKey)
+		return StatsResult{}, fmt.Errorf("no results for %s", name)
 	}
 
 	ranked := make([]TopEntry, 0, len(avgs))
-	for k, avg := range avgs {
-		ranked = append(ranked, TopEntry{PlayerKey: k, AvgScore: avg})
+	for n, avg := range avgs {
+		ranked = append(ranked, TopEntry{Name: n, AvgScore: avg})
 	}
 	sortEntries(ranked)
 
 	rank := 1
 	for _, e := range ranked {
-		if e.PlayerKey == playerKey {
+		if e.Name == name {
 			break
 		}
 		rank++
@@ -116,10 +145,10 @@ func (f *FileStore) QueryTop(k int, sinceDay int) ([]TopEntry, error) {
 		return nil, err
 	}
 
-	avgs := computeAverages(results)
+	avgs := computeAverages(f.resolveAll(results))
 	entries := make([]TopEntry, 0, len(avgs))
-	for key, avg := range avgs {
-		entries = append(entries, TopEntry{PlayerKey: key, AvgScore: avg})
+	for name, avg := range avgs {
+		entries = append(entries, TopEntry{Name: name, AvgScore: avg})
 	}
 	sortEntries(entries)
 
@@ -151,6 +180,6 @@ func sortEntries(entries []TopEntry) {
 		if entries[i].AvgScore != entries[j].AvgScore {
 			return entries[i].AvgScore < entries[j].AvgScore
 		}
-		return entries[i].PlayerKey < entries[j].PlayerKey
+		return entries[i].Name < entries[j].Name
 	})
 }

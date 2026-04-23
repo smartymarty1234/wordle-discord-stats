@@ -12,13 +12,20 @@ type WordleResult struct {
 	Complete  bool
 }
 
-// PlayerKey returns the canonical scoring key for a result.
-// FixedNick is already a display name; UserID requires nickcache resolution.
+// PlayerKey returns the raw identity key for a result before resolution.
+// UserID results require nickcache resolution; FixedNick results are already display names.
 func PlayerKey(r WordleResult) string {
 	if r.FixedNick != "" {
 		return r.FixedNick
 	}
 	return r.UserID
+}
+
+// Resolver maps a player key to a display name.
+// nickcache.Get satisfies this: snowflakes resolve to their guild nick,
+// and fixed nicks pass through unchanged (not in the cache).
+type Resolver interface {
+	Get(key string) string
 }
 
 type StatsResult struct {
@@ -27,8 +34,8 @@ type StatsResult struct {
 }
 
 type TopEntry struct {
-	PlayerKey string // either a Discord snowflake or a fixed nick
-	AvgScore  float64
+	Name     string // resolved display name
+	AvgScore float64
 }
 
 type Store interface {
@@ -37,12 +44,10 @@ type Store interface {
 	QueryTop(k int, sinceDay int) ([]TopEntry, error)
 }
 
-// FormatTop formats a leaderboard. resolve maps a PlayerKey to a display name:
-// pass nickcache.Get, which handles both snowflakes and fixed nicks transparently.
-func FormatTop(entries []TopEntry, resolve func(string) string) string {
+func FormatTop(entries []TopEntry) string {
 	msg := ""
 	for i, e := range entries {
-		msg += fmt.Sprintf("%d. %s — %.2f\n", i+1, resolve(e.PlayerKey), e.AvgScore)
+		msg += fmt.Sprintf("%d. %s — %.2f\n", i+1, e.Name, e.AvgScore)
 	}
 	return msg
 }
