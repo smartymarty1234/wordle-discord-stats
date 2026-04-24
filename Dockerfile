@@ -1,4 +1,4 @@
-FROM rust:1.86-slim AS imgparse-builder
+FROM rust:1.88-slim AS imgparse-builder
 WORKDIR /build/imgparse
 COPY imgparse/Cargo.toml imgparse/Cargo.lock ./
 COPY imgparse/src ./src
